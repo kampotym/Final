@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Memory Game</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap");
+
+      html {
+        --primary-color: #2e3a87;
+        --secondary-color: #1c2b5f;
+        --highlight-color: #ffcc29;
+        --card-front-bg: #ffffff;
+        --card-back-bg: linear-gradient(135deg, #ffcc29, #ff8a00);
+        --container-bg: rgba(255, 255, 255, 0.9);
+      }
+
+      html,
+      body {
+        margin: 0;
+        font-family: "Roboto", sans-serif;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+      }
+
+      body {
+        background-image: url("https://i.pinimg.com/originals/7e/db/b9/7edbb99a6de52909c111101620cafba6.jpg");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        font-size: 20px;
+        color: #333;
+        letter-spacing: 0.15em;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
+      }
+
+      .game-container {
+        background-color: var(--container-bg);
+        border-radius: 15px;
+        padding: 2em;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        width: 100%;
+        max-width: 800px;
+      }
+
+      .heading {
+        font-size: 2.5em;
+        color: var(--primary-color);
+        margin: 0;
+      }
+
+      .description {
+        font-size: 1.5em;
+        color: var(--secondary-color);
+        margin: 0.5em 0;
+      }
+
+      #game-board {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1em;
+        margin-top: 1em;
+        box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.2);
+        padding: 1em;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+      }
+
+      #timer {
+        font-size: 1.2em;
+        margin-top: 0.5em;
+        color: var(--primary-color);
+      }
+
+      #new-game-button {
+        border: none;
+        border-radius: 5px;
+        padding: 0.5em;
+        background: var(--highlight-color);
+        cursor: pointer;
+        color: var(--primary-color);
+        text-transform: uppercase;
+        transition: opacity 0.2s ease-in-out;
+        padding: 0.5em 1.5em;
+        border-radius: 1.5em;
+        font-size: 1em;
+        font-family: inherit;
+        letter-spacing: inherit;
+      }
+
+      #new-game-button:hover {
+        opacity: 0.8;
+      }
+
+      .card {
+        width: 5em;
+        height: 5em;
+        perspective: 50em;
+        cursor: pointer;
+        transition: transform 0.3s, box-shadow 0.3s;
+        will-change: transform;
+      }
+
+      .card:hover {
+        transform: scale(1.05);
+        box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.3);
+      }
+
+      .card-inner {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        transform-style: preserve-3d;
+        transition: transform 0.5s;
+      }
+
+      .card.visible .card-inner {
+        transform: rotateY(180deg);
+      }
+
+      .card-front,
+      .card-back {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        backface-visibility: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 0.5em;
+        box-shadow: 0.05em 0.05em 0.05em 0.05em rgba(0, 0, 0, 0.1);
+        font-size: 2.5em;
+      }
+
+      .card-front {
+        background-color: var(--card-front-bg);
+        color: var(--primary-color);
+      }
+
+      .card-back {
+        background: var(--card-back-bg);
+        color: white;
+        transform: rotateY(180deg);
+      }
+
+      @media (max-width: 768px) {
+        #game-board {
+          grid-template-columns: repeat(4, 1fr);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-container">
+      <h2 class="heading">Memory Game</h2>
+      <h3 class="description">Guess all the cards</h3>
+      <div id="timer">Time: 0 seconds</div>
+      <div id="game-board"></div>
+      <h2 id="victory-message"></h2>
+      <button type="button" id="new-game-button">new game</button>
+    </div>
+
+    <script>
+      const gameNode = document.querySelector("#game-board");
+      const winningText = document.querySelector("#victory-message");
+      const startGameButton = document.querySelector("#new-game-button");
+      const timerElement = document.querySelector("#timer");
+
+      const visibleCardClassname = "visible";
+      const cardFlipTimeoutMs = 500;
+      const cardElements = ["🎄", "🎅", "❄️", "🎁", "🦌", "⛄", "🎀", "🌟"]; // 8 уникальных карт
+      const cardsAmount = 16;  // 16 карт (8 пар)
+
+      let visibleCards = [];
+      let timer = null;
+      let secondsElapsed = 0;
+
+      startGameButton.addEventListener("click", startGame);
+
+      function startGame() {
+        resetGame();
+        
+        const cardValues = generateCardPairs(cardElements, cardsAmount);
+        cardValues.forEach(renderCard);
+
+        // Show all cards briefly, then hide them again
+        setTimeout(() => toggleCardsVisibility(true), 100);
+        setTimeout(() => toggleCardsVisibility(false), cardFlipTimeoutMs * 2);
+      }
+
+      function resetGame() {
+        gameNode.innerHTML = "";
+        winningText.textContent = "";
+        timerElement.textContent = "Time: 0 seconds";
+        secondsElapsed = 0;
+        
+        if (timer) clearInterval(timer);
+
+        timer = setInterval(() => {
+          secondsElapsed++;
+          timerElement.textContent = `Time: ${secondsElapsed} seconds`;
+        }, 1000);
+      }
+
+      function generateCardPairs(arr, fieldSize) {
+        if (arr.length * 2 !== fieldSize) {
+          console.error("Invalid array size for card pairs.");
+          return [];
+        }
+
+        const randomArray = [];
+        const elementCounts = arr.reduce((acc, item) => ({ ...acc, [item]: 0 }), {});
+
+        while (randomArray.length < fieldSize) {
+          const randomElement = arr[Math.floor(Math.random() * arr.length)];
+          if (elementCounts[randomElement] < 2) {
+            randomArray.push(randomElement);
+            elementCounts[randomElement]++;
+          }
+        }
+
+        return randomArray;
+      }
+
+      function renderCard(cardText) {
+        const card = document.createElement("div");
+        card.classList.add("card");
+
+        const cardInner = document.createElement("div");
+        cardInner.classList.add("card-inner");
+
+        const cardFront = document.createElement("div");
+        cardFront.classList.add("card-front");
+        cardFront.textContent = "?";
+
+        const cardBack = document.createElement("div");
+        cardBack.classList.add("card-back");
+        cardBack.textContent = cardText;
+
+        cardInner.append(cardFront, cardBack);
+        card.append(cardInner);
+        card.addEventListener("click", () => handleCardClick(card));
+        gameNode.appendChild(card);
+      }
+
+      function handleCardClick(card) {
+        if (card.classList.contains(visibleCardClassname)) return;
+
+        card.classList.add(visibleCardClassname);
+        visibleCards.push(card);
+
+        if (visibleCards.length % 2 === 0) {
+          const [prelastCard, lastCard] = visibleCards.slice(-2);
+          if (lastCard.textContent !== prelastCard.textContent) {
+            visibleCards = visibleCards.slice(0, -2);
+            setTimeout(() => {
+              [lastCard, prelastCard].forEach(card => card.classList.remove(visibleCardClassname));
+            }, cardFlipTimeoutMs);
+          } else {
+            checkVictory();
+          }
+        }
+      }
+
+      function checkVictory() {
+        if (document.querySelectorAll(`.${visibleCardClassname}`).length === cardsAmount) {
+          winningText.textContent = "Congratulations, you've won!";
+          clearInterval(timer);
+        }
+      }
+
+      function toggleCardsVisibility(visible) {
+        document.querySelectorAll(".card").forEach(card => {
+          card.classList.toggle(visibleCardClassname, visible);
+        });
+      }
+
+      startGame();
+    </script>
+  </body>
+</html>
+
+
