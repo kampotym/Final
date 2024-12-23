@@ -1,3 +1,5 @@
+![image](https://github.com/user-attachments/assets/1ba4aed4-59f3-49ca-9758-464be404e7ff)
+
 # Memory Game (4x4)
 
 This is a classic memory game where players need to find matching pairs of cards. The game consists of 16 cards (8 pairs) that must be revealed, and if the cards match, they stay open. The game ends when all the pairs are found.
